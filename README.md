@@ -1,4 +1,23 @@
+# Agentic Trading Frontend (Frontend for Trade-Algo-AVS)
+
 This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+
+Web3 (blockchain) folder was created with hardhat framework.
+
+## Setting Up
+Blockchain folder's env file `./blockchain/.env`
+```
+ALCHEMY_API_KEY=TFzg9C8....J_Yjk
+PRIVATE_KEY=9567d4c0b48d0........0a
+```
+
+Frontend `.env` file should contain
+```
+NEXT_PUBLIC_ONCHAINKIT_API_KEY=hY5oCV.....cJeLh
+NEXT_PUBLIC_USE_TESTNET=true
+NEXT_PUBLIC_API_URL=http://trade-algo-avs-backend-dev-service-960625539149.us-central1.run.app
+NEXT_PUBLIC_CONTRACT_ADDRESS=0x967E8625EFE86ac5fb82102C466b56c2c507417f
+```
 
 ## Getting Started
 
