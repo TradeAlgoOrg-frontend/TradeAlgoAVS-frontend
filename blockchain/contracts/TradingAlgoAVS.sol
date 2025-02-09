@@ -15,8 +15,20 @@ contract TradingAlgoAVS {
         bool active; // 是否啟用
     }
 
+    struct Subscription {
+        uint256 strategyId;
+        address subscriber;
+        uint256 startTime;
+        uint256 endTime;
+        bool active;
+    }
+
     uint256 private nextStrategyId;
     mapping(uint256 => Strategy) public strategies;
+    mapping(address => mapping(uint256 => Subscription)) public subscriptions; // subscriber => strategyId => Subscription
+    mapping(address => uint256[]) public userSubscriptions; // user => array of strategy IDs
+    mapping(uint256 => uint256) public activeSubscribersCount; // strategyId => active subscription count
+    mapping(uint256 => uint256) public totalSubscribersCount; // strategyId => total subscription count ever
 
     event StrategyCreated(
         uint256 indexed strategyId,
@@ -29,6 +41,20 @@ contract TradingAlgoAVS {
         uint256 risk
     );
 
+    event StrategySubscribed(
+        uint256 indexed strategyId,
+        address indexed subscriber,
+        uint256 subscriptionFee,
+        string subscriptionPeriod,
+        uint256 startTime,
+        uint256 endTime
+    );
+
+    event StrategyUnsubscribed(
+        uint256 indexed strategyId,
+        address indexed subscriber
+    );
+
     function createStrategy(
         string memory _strategyUid,
         uint256 _subscriptionFee,
@@ -37,13 +63,7 @@ contract TradingAlgoAVS {
         uint256 _profitability,
         uint256 _risk
     ) public {
-        // ✅ Debug 1: 確認輸入參數
         console.log("Creating strategy with UID: %s", _strategyUid);
-        console.log("Subscription Fee: %s", _subscriptionFee);
-        console.log("Subscription Period: %s", _subscriptionPeriod);
-        console.log("ROI: %s", _roi);
-        console.log("Profitability: %s", _profitability);
-        console.log("Risk: %s", _risk);
         console.log("Sender Address: %s", msg.sender);
 
         require(
@@ -53,12 +73,9 @@ contract TradingAlgoAVS {
             "Invalid subscription period"
         );
 
-        // ✅ Debug 2: 進入策略存儲前
-        console.log("Passed subscription period validation");
-
         strategies[nextStrategyId] = Strategy(
             nextStrategyId,
-            msg.sender, // 存提供者的 address
+            msg.sender,
             _subscriptionFee,
             _subscriptionPeriod,
             _strategyUid,
@@ -67,9 +84,6 @@ contract TradingAlgoAVS {
             _risk,
             true
         );
-
-        // ✅ Debug 3: 存儲策略後，準備發送事件
-        console.log("Strategy stored with ID: %s", nextStrategyId);
 
         emit StrategyCreated(
             nextStrategyId,
@@ -82,9 +96,7 @@ contract TradingAlgoAVS {
             _risk
         );
 
-        // ✅ Debug 4: 策略成功建立
-        console.log("Strategy creation completed!");
-        nextStrategyId++; // 更新策略 ID
+        nextStrategyId++;
     }
 
     function getStrategy(uint256 _id) public view returns (Strategy memory) {
@@ -96,6 +108,67 @@ contract TradingAlgoAVS {
         for (uint256 i = 0; i < nextStrategyId; i++) {
             allStrategies[i] = strategies[i];
         }
-    return allStrategies;
+        return allStrategies;
+    }
+
+    function subscribeStrategy(uint256 _id) public payable {
+        Strategy storage strategy = strategies[_id];
+        require(msg.value == strategy.subscriptionFee, "Incorrect subscription fee");
+        require(subscriptions[msg.sender][_id].active == false, "Already subscribed");
+
+        uint256 duration;
+        if (keccak256(abi.encodePacked(strategy.subscriptionPeriod)) == keccak256(abi.encodePacked("day"))) {
+            duration = 1 days;
+        } else if (keccak256(abi.encodePacked(strategy.subscriptionPeriod)) == keccak256(abi.encodePacked("week"))) {
+            duration = 7 days;
+        } else if (keccak256(abi.encodePacked(strategy.subscriptionPeriod)) == keccak256(abi.encodePacked("month"))) {
+            duration = 30 days;
+        }
+
+        uint256 startTime = block.timestamp;
+        uint256 endTime = startTime + duration;
+
+        subscriptions[msg.sender][_id] = Subscription({
+            strategyId: _id,
+            subscriber: msg.sender,
+            startTime: startTime,
+            endTime: endTime,
+            active: true
+        });
+
+        userSubscriptions[msg.sender].push(_id); // Track user's subscriptions
+        activeSubscribersCount[_id]++; // Increment active subscriber count
+        totalSubscribersCount[_id]++; // Increment total ever subscribed count
+
+        payable(strategy.provider).transfer(msg.value);
+
+        console.log("Subscriber Address: %s", msg.sender);
+
+        emit StrategySubscribed(_id, msg.sender, strategy.subscriptionFee, strategy.subscriptionPeriod, startTime, endTime);
+    }
+
+    function unsubscribeStrategy(uint256 _id) public {
+        require(subscriptions[msg.sender][_id].active, "Not subscribed");
+
+        subscriptions[msg.sender][_id].active = false;
+        activeSubscribersCount[_id]--; // Decrease active subscriber count
+
+        emit StrategyUnsubscribed(_id, msg.sender);
+    }
+
+    function isSubscribed(address _subscriber, uint256 _id) public view returns (bool) {
+        return subscriptions[_subscriber][_id].active;
+    }
+
+    function getUserSubscriptions(address _subscriber) public view returns (uint256[] memory) {
+        return userSubscriptions[_subscriber];
+    }
+
+    function getActiveSubscribersCount(uint256 _id) public view returns (uint256) {
+        return activeSubscribersCount[_id];
+    }
+
+    function getTotalSubscribersCount(uint256 _id) public view returns (uint256) {
+        return totalSubscribersCount[_id];
     }
 }

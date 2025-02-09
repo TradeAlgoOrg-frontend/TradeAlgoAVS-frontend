@@ -5,15 +5,17 @@ import { BrowserProvider, Contract, parseEther } from "ethers";
 import tradingAlgoArtifact from "../abis/TradingAlgoAVS.json";
 const tradingAlgoABI = tradingAlgoArtifact.abi;
 import { useAccount } from "wagmi";
+import axios from "axios";
+import { parse } from "path";
 
-const CONTRACT_ADDRESS = "0xDc64a140Aa3E981100a9becA4E685f962f0cF6C9";
+const CONTRACT_ADDRESS = "0xF8EDE4500F5cDcFd4FB6F584Ea5DcA63D72De79f";
 
 export function useTradingAlgo() {
   const { address, isConnected } = useAccount();
   const [provider, setProvider] = useState<BrowserProvider | null>(null);
   const [contract, setContract] = useState<Contract | null>(null);
 
-  // 初始化 Provider 和 Contract
+  // ✅ Initialize Provider & Contract
   useEffect(() => {
     if (typeof window !== "undefined" && isConnected && window.ethereum) {
       const _provider = new BrowserProvider(window.ethereum);
@@ -29,7 +31,7 @@ export function useTradingAlgo() {
     }
   }, [isConnected]);
 
-  // 🔹 1️⃣ 先把策略上傳到後端
+  // ✅ Upload Strategy to Backend
   const uploadStrategy = async (file: File): Promise<string | null> => {
     try {
       // const formData = new FormData();
@@ -45,16 +47,15 @@ export function useTradingAlgo() {
       // }
 
       // const data = await res.json();
-      // for demo purpose, return a fake strategy_uid
-      return "123";
-      // return data.strategy_uid; // 後端回傳的 strategy_uid
+      return "123"; // Fake strategy_uid for demo
+      // return data.strategy_uid;
     } catch (error) {
       console.error("❌ Error uploading strategy:", error);
       return null;
     }
   };
 
-  // 🔹 2️⃣ 創建策略到區塊鏈
+  // ✅ Create Strategy on Blockchain
   const createStrategy = async (
     strategyUid: string,
     subscriptionFee: number,
@@ -69,7 +70,7 @@ export function useTradingAlgo() {
     }
 
     try {
-      const feeInWei = parseEther(subscriptionFee.toString()); // 轉換為 ETH（假設是以 ETH 為單位）
+      const feeInWei = parseEther(subscriptionFee.toString());
 
       const tx = await contract.createStrategy(
         strategyUid,
@@ -87,6 +88,7 @@ export function useTradingAlgo() {
     }
   };
 
+  // ✅ Get All Strategies
   const getAllStrategies = async () => {
     if (!contract) {
       console.error("❌ No contract found!");
@@ -124,5 +126,85 @@ export function useTradingAlgo() {
     }
   };
 
-  return { uploadStrategy, createStrategy, getAllStrategies };
+  // ✅ Subscribe to a Strategy
+  const subscribeToStrategy = async (strategyId: number, feeInEth: number) => {
+    if (!contract) {
+      console.error("❌ No contract found!");
+      return;
+    }
+
+    try {
+      const value = parseEther(feeInEth.toString());
+
+      const feeInWei = 1;
+    
+      console.log(`🔄 Subscribing to strategy ID: ${strategyId} at ${value}`);
+
+      const tx = await contract.subscribeStrategy(strategyId, { feeInWei });
+      await tx.wait();
+      console.log("✅ Subscription successful!");
+      return tx;
+    } catch (error) {
+      console.error("❌ Error subscribing:", error);
+      throw error;
+    }
+  };
+
+  // ✅ Unsubscribe from a Strategy
+  const unsubscribeFromStrategy = async (strategyId: number) => {
+    if (!contract) {
+      console.error("❌ No contract found!");
+      return;
+    }
+
+    try {
+      console.log(`🔄 Unsubscribing from strategy ID: ${strategyId}`);
+
+      const tx = await contract.unsubscribeStrategy(strategyId);
+      await tx.wait();
+
+      console.log("✅ Unsubscription successful!");
+    } catch (error) {
+      console.error("❌ Error unsubscribing:", error);
+    }
+  };
+
+  const getEthPrice = async () => {
+    try {
+      const response = await axios.get(
+        "https://api.coingecko.com/api/v3/simple/price?ids=ethereum&vs_currencies=usd"
+      );
+      return response.data.ethereum.usd;
+    } catch (error) {
+      console.error("Error fetching ETH price:", error);
+      return null;
+    }
+  };
+
+  const getUserSubscriptions = async (walletAddress: string) => {
+    if (!contract) {
+      console.error("❌ No contract found!");
+      return [];
+    }
+  
+    try {
+      console.log(`🔄 Fetching subscriptions for: ${walletAddress}`);
+  
+      const subscriptionIds = await contract.getUserSubscriptions(walletAddress);
+      return subscriptionIds.map((id: bigint) => id.toString());
+    } catch (error) {
+      console.error("❌ Error fetching user subscriptions:", error);
+      return [];
+    }
+  };
+
+  return {
+    uploadStrategy,
+    createStrategy,
+    getAllStrategies,
+    subscribeToStrategy,
+    unsubscribeFromStrategy,
+    getEthPrice,
+    getUserSubscriptions,
+  };
 }

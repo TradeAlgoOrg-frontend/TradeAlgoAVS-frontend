@@ -1,8 +1,9 @@
-// app/strategies/page.tsx
 "use client";
 import Link from "next/link";
+import { useTradingAlgo } from "../hooks/useTradingAlgo";
+import { useState } from "react";
+import { enqueueSnackbar } from "notistack";
 
-// 假資料
 const strategies = [
   {
     id: 1,
@@ -13,7 +14,7 @@ const strategies = [
     subscribers: 1200,
     winRate: 78,
     riskScore: 7.8,
-    fee: 149,
+    fee: 19,
     status: "High Profit",
   },
   {
@@ -43,6 +44,47 @@ const strategies = [
 ];
 
 export default function StrategiesPage() {
+  const { subscribeToStrategy, unsubscribeFromStrategy, getEthPrice, getUserSubscriptions } = useTradingAlgo();
+  const [loading, setLoading] = useState<{ [key: number]: boolean }>({});
+
+  // Function to subscribe to a strategy
+  const handleSubscribe = async (strategyId: number, fee: number) => {
+
+    if (!window.ethereum) {
+      alert("Please connect wallet to continue.");
+      return;
+    }
+
+    try {
+      setLoading((prev) => ({ ...prev, [strategyId]: true })); // Set only this button to loading
+
+      // convert fee from usd to eth
+      const ethPrice = await getEthPrice();
+      let ethValue = 0;
+      if (ethPrice) {
+        ethValue = parseFloat((fee / ethPrice).toFixed(8));
+        console.log(`Subscription fee in ETH: ${ethValue}`);
+      } else {
+        console.error("Failed to fetch ETH price");
+        enqueueSnackbar("Failed to fetch ETH price. Try again later.");
+        return;
+      }
+
+      subscribeToStrategy(strategyId, ethValue).then((tx) => {
+        console.log(`Subscription successful! Tx hash: ${tx.hash}`);
+        enqueueSnackbar(`Subscription successful!`);
+      }, (error) => {
+        enqueueSnackbar("Subscription failed. Check the console for details.");
+      });
+
+    } catch (error) {
+      console.error("Subscription failed:", error);
+      enqueueSnackbar("Subscription failed. Check the console for details.");
+    } finally {
+      setLoading((prev) => ({ ...prev, [strategyId]: false })); // Reset only this button's loading state
+    }
+  };
+
   return (
     <main className="min-h-screen bg-gradient-to-br from-gray-100 to-gray-200 py-16">
       <div className="max-w-7xl mx-auto px-4">
@@ -93,8 +135,8 @@ export default function StrategiesPage() {
                       strategy.status === "High Profit"
                         ? "bg-green-100 text-green-800"
                         : strategy.status === "High Risk"
-                        ? "bg-red-100 text-red-800"
-                        : "bg-blue-100 text-blue-800",
+                          ? "bg-red-100 text-red-800"
+                          : "bg-blue-100 text-blue-800",
                       "text-sm font-medium px-3 py-1 rounded-full"
                     )}
                   >
@@ -102,16 +144,14 @@ export default function StrategiesPage() {
                   </span>
                 </div>
 
-                {/* Performance Metrics */}
                 <div className="grid grid-cols-2 gap-4 mb-6">
                   <div className="bg-gray-50 p-3 rounded-lg">
                     <p className="text-sm text-gray-500">Monthly Return</p>
                     <p
-                      className={`text-2xl font-bold ${
-                        strategy.monthlyReturn < 0
-                          ? "text-red-600"
-                          : "text-green-600"
-                      }`}
+                      className={`text-2xl font-bold ${strategy.monthlyReturn < 0
+                        ? "text-red-600"
+                        : "text-green-600"
+                        }`}
                     >
                       {strategy.monthlyReturn}%
                     </p>
@@ -129,16 +169,14 @@ export default function StrategiesPage() {
                   <div className="bg-gray-50 p-3 rounded-lg">
                     <p className="text-sm text-gray-500">Risk Score</p>
                     <p
-                      className={`text-2xl font-bold ${
-                        strategy.riskScore >= 7 ? "text-red-600" : ""
-                      }`}
+                      className={`text-2xl font-bold ${strategy.riskScore >= 7 ? "text-red-600" : ""
+                        }`}
                     >
                       {strategy.riskScore}
                     </p>
                   </div>
                 </div>
 
-                {/* Subscription Price */}
                 <div className="flex justify-between items-center mb-6">
                   <div>
                     <p className="text-sm text-gray-500">Subscription Fee</p>
@@ -147,8 +185,12 @@ export default function StrategiesPage() {
                       <span className="text-sm text-gray-500">/ month</span>
                     </p>
                   </div>
-                  <button className="bg-black text-white px-6 py-2 rounded-lg hover:bg-gray-800">
-                    Subscribe
+                  <button
+                    onClick={() => handleSubscribe(strategy.id, strategy.fee)}
+                    className="bg-black text-white px-6 py-2 rounded-lg hover:bg-gray-800"
+                    disabled={loading[strategy.id]}
+                  >
+                    {loading[strategy.id] ? "Processing..." : "Subscribe"}
                   </button>
                 </div>
               </div>
