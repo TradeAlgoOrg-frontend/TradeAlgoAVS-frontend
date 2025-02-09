@@ -4,6 +4,7 @@ import { useTradingAlgo } from "../hooks/useTradingAlgo";
 import { useState, useEffect } from "react";
 import { enqueueSnackbar } from "notistack";
 import { useAccount } from "wagmi";
+import { Tooltip } from "@mui/material";
 
 const strategies = [
   {
@@ -12,7 +13,8 @@ const strategies = [
     owner: "Alice Smith",
     ownerId: "alice123",
     monthlyReturn: 30.5,
-    subscribers: 1200,
+    subscribers: 0,
+    totalSubscribers: 0,
     winRate: 78,
     riskScore: 7.8,
     fee: 19,
@@ -24,7 +26,8 @@ const strategies = [
     owner: "Charlie Lee",
     ownerId: "charlie789",
     monthlyReturn: 1.8,
-    subscribers: 2300,
+    subscribers: 1190,
+    totalSubscribers: 1200,
     winRate: 89,
     riskScore: 2.3,
     fee: 299,
@@ -36,7 +39,8 @@ const strategies = [
     owner: "Bob Johnson",
     ownerId: "bob456",
     monthlyReturn: -4.2,
-    subscribers: 850,
+    subscribers: 23,
+    totalSubscribers: 850,
     winRate: 42,
     riskScore: 9.1,
     fee: 99,
@@ -46,9 +50,10 @@ const strategies = [
 
 export default function StrategiesPage() {
   const { address, isConnected } = useAccount();
-  const { subscribeToStrategy, unsubscribeFromStrategy, getEthPrice, getUserSubscriptions } = useTradingAlgo();
+  const { subscribeToStrategy, unsubscribeFromStrategy, getEthPrice, getUserSubscriptions, getActiveSubscribersCount, getTotalSubscribersCount } = useTradingAlgo();
   const [loading, setLoading] = useState<{ [key: number]: boolean }>({});
   const [subscribedStrategies, setSubscribedStrategies] = useState<number[]>([]);
+  const [subscriberCounts, setSubscriberCounts] = useState<{ [key: number]: { active: number; total: number } }>({});
 
   // Fetch user's subscribed strategies
   useEffect(() => {
@@ -56,6 +61,16 @@ export default function StrategiesPage() {
       getUserSubscriptions(address).then((subscriptions) => {
         setSubscribedStrategies(subscriptions.map(Number)); // Convert BigInt to number
       });
+      async function fetchSubscriberCounts() {
+        const counts: { [key: number]: { active: number; total: number } } = {};
+        for (const strategy of strategies) {
+          const active = await getActiveSubscribersCount(strategy.id);
+          const total = await getTotalSubscribersCount(strategy.id);
+          counts[strategy.id] = { active, total };
+        }
+        setSubscriberCounts(counts);
+      }
+      fetchSubscriberCounts();
     }
   }, [isConnected, address]);
 
@@ -175,6 +190,7 @@ export default function StrategiesPage() {
                 </div>
 
                 <div className="grid grid-cols-2 gap-4 mb-6">
+                  <Tooltip title="Return on Investment" arrow>
                   <div className="bg-gray-50 p-3 rounded-lg">
                     <p className="text-sm text-gray-500">Monthly Return</p>
                     <p
@@ -186,16 +202,24 @@ export default function StrategiesPage() {
                       {strategy.monthlyReturn}%
                     </p>
                   </div>
-                  <div className="bg-gray-50 p-3 rounded-lg">
-                    <p className="text-sm text-gray-500">Subscribers</p>
-                    <p className="text-2xl font-bold">
-                      {strategy.subscribers.toLocaleString()}
-                    </p>
-                  </div>
+                  </Tooltip>
+                  <Tooltip title="Current / Total" arrow>
+                    <div className="bg-gray-50 p-3 rounded-lg">
+                      <p className="text-sm text-gray-500"> Subscribers</p>
+                      <p className="text-2xl font-bold">
+                        {(strategy.subscribers + (subscriberCounts[strategy.id]?.active || 0)).toLocaleString()}
+                        <span className="text-gray-400"> / </span>
+                        {(strategy.totalSubscribers + (subscriberCounts[strategy.id]?.total || 0)).toLocaleString()}
+                      </p>
+                    </div>
+                  </Tooltip>
+                  <Tooltip title="Profitability" arrow>
                   <div className="bg-gray-50 p-3 rounded-lg">
                     <p className="text-sm text-gray-500">Win Rate</p>
                     <p className="text-2xl font-bold">{strategy.winRate}%</p>
                   </div>
+                  </Tooltip>
+                  <Tooltip title="Risk and Drawbacks" arrow>
                   <div className="bg-gray-50 p-3 rounded-lg">
                     <p className="text-sm text-gray-500">Risk Score</p>
                     <p
@@ -205,6 +229,7 @@ export default function StrategiesPage() {
                       {strategy.riskScore}
                     </p>
                   </div>
+                  </Tooltip>
                 </div>
 
                 <div className="flex justify-between items-center mb-6">

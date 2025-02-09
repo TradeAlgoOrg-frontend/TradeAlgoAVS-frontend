@@ -137,7 +137,7 @@ export function useTradingAlgo() {
       const value = parseEther(feeInEth.toString());
 
       const feeInWei = 1;
-    
+
       console.log(`🔄 Subscribing to strategy ID: ${strategyId} at ${value}`);
 
       const tx = await contract.subscribeStrategy(strategyId, { feeInWei });
@@ -186,15 +186,47 @@ export function useTradingAlgo() {
       console.error("❌ No contract found!");
       return [];
     }
-  
+
     try {
       console.log(`🔄 Fetching subscriptions for: ${walletAddress}`);
-  
+
       const subscriptionIds = await contract.getUserSubscriptions(walletAddress);
       return subscriptionIds.map((id: bigint) => id.toString());
     } catch (error) {
       console.error("❌ Error fetching user subscriptions:", error);
       return [];
+    }
+  };
+
+  // ✅ Get Active Subscriber Count
+  const getActiveSubscribersCount = async (strategyId: number): Promise<number> => {
+    if (!contract) {
+      console.error("❌ No contract found!");
+      return 0;
+    }
+
+    try {
+      const count = await contract.getActiveSubscribersCount(strategyId);
+      return Number(count);
+    } catch (error) {
+      console.error("❌ Error fetching active subscriber count:", error);
+      return 0;
+    }
+  };
+
+  // ✅ Get Total Subscriber Count
+  const getTotalSubscribersCount = async (strategyId: number): Promise<number> => {
+    if (!contract) {
+      console.error("❌ No contract found!");
+      return 0;
+    }
+
+    try {
+      const count = await contract.getTotalSubscribersCount(strategyId);
+      return Number(count);
+    } catch (error) {
+      console.error("❌ Error fetching total subscriber count:", error);
+      return 0;
     }
   };
 
@@ -206,5 +238,7 @@ export function useTradingAlgo() {
     unsubscribeFromStrategy,
     getEthPrice,
     getUserSubscriptions,
+    getActiveSubscribersCount,
+    getTotalSubscribersCount,
   };
 }
