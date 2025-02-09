@@ -11,7 +11,7 @@ import { useRouter } from "next/navigation";
 
 export default function StrategyProviderForm() {
   const router = useRouter();
-  const { isConnected } = useAccount(); // 檢查是否已連接錢包
+  const { address, isConnected } = useAccount(); // 檢查是否已連接錢包
   const [strategyName, setStrategyName] = useState("");
   const { uploadStrategy, createStrategy } = useTradingAlgo();
   const [strategyType, setStrategyType] = useState("python");
@@ -31,23 +31,6 @@ export default function StrategyProviderForm() {
   const [modalTitle, setModalTitle] = useState("");
   const [modalMessage, setModalMessage] = useState("");
 
-  // // 上傳策略的 API 請求
-  // const uploadMutation = useMutation({
-  //   mutationFn: async () => {
-  //     const formData = new FormData();
-  //     if (file) formData.append("strategy", file);
-  //     formData.append("strategyName", strategyName);
-  //     formData.append("strategyType", strategyType);
-  //     formData.append("subscriptionFee", subscriptionFee);
-  //     formData.append("subscriptionPeriod", subscriptionPeriod);
-
-  //     const res = await fetch("/api/upload-strategy", {
-  //       method: "POST",
-  //       body: formData,
-  //     });
-  //     return res.json();
-  //   },
-  // });
   const handleUploadAndCreate = async () => {
     if (!file) return alert("Please upload a strategy file");
 
@@ -55,7 +38,16 @@ export default function StrategyProviderForm() {
 
     try {
       // Upload Strategy to the backend and get the strategy UID
-      const strategyUid = await uploadStrategy(file);
+      const strategyUid = await uploadStrategy(
+        file,
+        strategyName,
+        address as string,
+        strategyType,
+        Number(roi),
+        Number(profitability),
+        Number(risk)
+      );
+
       if (!strategyUid) throw new Error("Strategy upload failed");
 
       // Create Strategy on the blockchain
@@ -66,9 +58,11 @@ export default function StrategyProviderForm() {
           ? "week"
           : "month";
 
+      // const feeInWei = ethers.parseUnits(subscriptionFee, "ether"); // ✅ 這裡轉換
+
       await createStrategy(
         strategyUid,
-        parseFloat(subscriptionFee),
+        Number(subscriptionFee),
         period,
         Number(roi),
         Number(profitability),
@@ -104,7 +98,7 @@ export default function StrategyProviderForm() {
 
   const handleModalClose = () => {
     setIsModalOpen(false);
-    router.push("/dashboard");
+    router.push("/dashboard/strategy");
   };
 
   // **如果沒連接錢包，顯示提示**

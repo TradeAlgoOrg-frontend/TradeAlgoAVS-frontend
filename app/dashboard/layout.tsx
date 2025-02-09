@@ -1,36 +1,24 @@
 // app/dashboard/layout.tsx
 "use client";
 
-import { ReactNode } from "react";
 import Sidebar from "../components/Sidebar"; // 左側選單
 import {
-  HomeIcon,
-  UsersIcon,
-  FolderIcon,
-  CalendarIcon,
-  DocumentDuplicateIcon,
+  BellIcon,
   ChartPieIcon,
+  PresentationChartBarIcon,
 } from "@heroicons/react/24/outline";
 
 const navigation = [
-  { name: "Dashboard", href: "/dashboard", icon: HomeIcon, current: true },
-  { name: "Team", href: "/dashboard/team", icon: UsersIcon, current: false },
   {
-    name: "Projects",
-    href: "/dashboard/projects",
-    icon: FolderIcon,
-    current: false,
+    name: "My Strategy",
+    href: "/dashboard/strategy",
+    icon: PresentationChartBarIcon,
+    current: true,
   },
   {
-    name: "Calendar",
-    href: "/dashboard/calendar",
-    icon: CalendarIcon,
-    current: false,
-  },
-  {
-    name: "Documents",
-    href: "/dashboard/documents",
-    icon: DocumentDuplicateIcon,
+    name: "Subscription",
+    href: "/dashboard/team",
+    icon: BellIcon,
     current: false,
   },
   {

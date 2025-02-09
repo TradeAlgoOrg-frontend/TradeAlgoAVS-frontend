@@ -171,4 +171,25 @@ contract TradingAlgoAVS {
     function getTotalSubscribersCount(uint256 _id) public view returns (uint256) {
         return totalSubscribersCount[_id];
     }
+    
+    function getMyStrategies() public view returns (Strategy[] memory) {
+        uint256 count = 0;
+        // **Count strategies created by msg.sender**
+        for (uint256 i = 0; i < nextStrategyId; i++) {
+            if (strategies[i].provider == msg.sender) {
+                count++;
+            }
+        }
+
+        // **Create an array with the correct size**
+        Strategy[] memory myStrategies = new Strategy[](count);
+        uint256 index = 0;
+        for (uint256 i = 0; i < nextStrategyId; i++) {
+            if (strategies[i].provider == msg.sender) {
+                myStrategies[index] = strategies[i];
+                index++;
+            }
+        }
+        return myStrategies;
+    }
 }

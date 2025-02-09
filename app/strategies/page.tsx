@@ -6,42 +6,64 @@ import { enqueueSnackbar } from "notistack";
 import { useAccount } from "wagmi";
 import { Tooltip } from "@mui/material";
 
-const strategies = [
+type Strategy = {
+  id: number;
+  uid: string;
+  owner: string;
+  ownerId: string;
+  name: string;
+  fee: number;
+  subscribers: number;
+  totalSubscribers: number;
+  subscriptionPeriod: string;
+  profitability: number;
+  riskScore: number;
+  roi: number;
+  status: string;
+};
+
+const mockStrategies = [
   {
     id: 1,
+    uid: "f732e251-da78-44ef-88ec-31b5729f859f",
+    owner: "Alice Wonderland",
     name: "Golden Cross Strategy",
-    owner: "Alice Smith",
-    ownerId: "alice123",
-    monthlyReturn: 30.5,
+    ownerId: "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
+    roi: 30.5,
     subscribers: 0,
     totalSubscribers: 0,
-    winRate: 78,
+    subscriptionPeriod: "week",
+    profitability: 78,
     riskScore: 7.8,
     fee: 19,
     status: "High Profit",
   },
   {
     id: 3,
+    uid: "b8d7e251-da78-44ef-88ec-31b5729f859g",
     name: "AI Trend Prediction",
     owner: "Charlie Lee",
     ownerId: "charlie789",
-    monthlyReturn: 1.8,
+    roi: 1.8,
     subscribers: 1190,
     totalSubscribers: 1200,
-    winRate: 89,
+    subscriptionPeriod: "month",
+    profitability: 89,
     riskScore: 2.3,
     fee: 299,
     status: "Hot",
   },
   {
     id: 2,
+    uid: "a8d7e251-da78-44ef-88ec-31b5729f859k",
     name: "Momentum Scalping",
     owner: "Bob Johnson",
     ownerId: "bob456",
-    monthlyReturn: -4.2,
+    roi: -4.2,
     subscribers: 23,
     totalSubscribers: 850,
-    winRate: 42,
+    subscriptionPeriod: "week",
+    profitability: 42,
     riskScore: 9.1,
     fee: 99,
     status: "High Risk",
@@ -49,6 +71,7 @@ const strategies = [
 ];
 
 export default function StrategiesPage() {
+  const [strategies, setStrategies] = useState<Strategy[]>(mockStrategies);
   const { address, isConnected } = useAccount();
   const { subscribeToStrategy, unsubscribeFromStrategy, getEthPrice, getUserSubscriptions, getActiveSubscribersCount, getTotalSubscribersCount } = useTradingAlgo();
   const [loading, setLoading] = useState<{ [key: number]: boolean }>({});
@@ -194,12 +217,12 @@ export default function StrategiesPage() {
                   <div className="bg-gray-50 p-3 rounded-lg">
                     <p className="text-sm text-gray-500">Monthly Return</p>
                     <p
-                      className={`text-2xl font-bold ${strategy.monthlyReturn < 0
+                      className={`text-2xl font-bold ${strategy.roi < 0
                         ? "text-red-600"
                         : "text-green-600"
                         }`}
                     >
-                      {strategy.monthlyReturn}%
+                      {strategy.roi}%
                     </p>
                   </div>
                   </Tooltip>
@@ -216,7 +239,7 @@ export default function StrategiesPage() {
                   <Tooltip title="Profitability" arrow>
                   <div className="bg-gray-50 p-3 rounded-lg">
                     <p className="text-sm text-gray-500">Win Rate</p>
-                    <p className="text-2xl font-bold">{strategy.winRate}%</p>
+                    <p className="text-2xl font-bold">{strategy.profitability}%</p>
                   </div>
                   </Tooltip>
                   <Tooltip title="Risk and Drawbacks" arrow>
