@@ -102,11 +102,10 @@ export function useTradingAlgo() {
     }
 
     try {
-      const feeInWei = parseEther(subscriptionFee.toString());
 
       const tx = await contract.createStrategy(
         strategyUid,
-        feeInWei,
+        subscriptionFee,
         subscriptionPeriod,
         roi,
         profitability,
@@ -125,65 +124,69 @@ export function useTradingAlgo() {
       console.error("❌ No contract found!");
       return [];
     }
+    return [];
+    // try {
+    //   // 🔹 Step 1: Fetch strategies from the smart contract
+    //   const strategies = await contract.getAllStrategies();
 
-    try {
-      // 🔹 Step 1: Fetch strategies from the smart contract
-      const strategies = await contract.getAllStrategies();
+    //   // 🔹 Step 2: Fetch additional details from backend API
+    //   const res = await fetch(`${NEXT_PUBLIC_API_URL}/strategies`);
+    //   const backendData = await res.json();
 
-      // 🔹 Step 2: Fetch additional details from backend API
-      const res = await fetch(`${NEXT_PUBLIC_API_URL}/strategies`);
-      const backendData = await res.json();
-
-      // 🔹 Step 3: Convert data and merge with backend info
-      return strategies.map(
-        (s: {
-          id: number;
-          provider: string;
-          subscriptionFee: number;
-          subscriptionPeriod: string;
-          strategyUid: string;
-          roi: number;
-          profitability: number;
-          risk: number;
-          active: boolean;
-          subscriberCount: number;
-        }) => {
-          const backendStrategy = backendData.find(
-            (b: { _id: string; strategy_name: string }) =>
-              b._id === s.strategyUid
-          );
-
-          return {
-            id: s.id, // Smart contract ID
-            uid: s.strategyUid, // Matches `_id` from backend
-            owner: s.provider, // Wallet address
-            name: backendStrategy?.strategy_name || "Cool Strategy", // Default if not found
-            subscriptionFee: Number(s.subscriptionFee), // Convert BigNumber to number
-            subscriberCount: Number(s.subscriberCount),
-            subscriptionPeriod: s.subscriptionPeriod,
-            profitability: Number(s.profitability),
-            risk: Number(s.risk),
-            ROI: Number(s.roi),
-
-            // 🔹 Step 4: Calculate status dynamically
-            // TODO: Refactor this logic into a separate function
-            status:
-              s.profitability > 30
-                ? "High Profit"
-                : s.risk > 7
-                ? "High Risk"
-                : s.subscriberCount > 1000
-                ? "Most Popular"
-                : "Stable",
-          };
-        }
-      );
-    } catch (error) {
-      console.error("❌ Error fetching strategies:", error);
-      return [];
-    }
+    //   // 🔹 Step 3: Convert data and merge with backend info
+    
+    //   return await Promise.all(
+    //     strategies.map(async (s: {
+    //       id: number;
+    //       provider: string;
+    //       subscriptionFee: number;
+    //       subscriptionPeriod: string;
+    //       strategyUid: string;
+    //       roi: number;
+    //       profitability: number;
+    //       risk: number;
+    //       active: boolean;
+    //       subscriberCount: number;
+    //     }) => {
+    //       const backendStrategy = backendData.find(
+    //         (b: { _id: string; strategy_name: string }) => b._id === s.strategyUid
+    //       );
+      
+    //       const subscriberCount = await contract.getActiveSubscribersCount(s.id);
+    //       const totalSubscriberCount = await contract.getTotalSubscribersCount(s.id);
+    //       console.log(`Subscriber count: ${subscriberCount} for strategy ID: ${s.id}`);
+      
+    //       return {
+    //         id: s.id.toString(), // Smart contract ID
+    //         uid: s.strategyUid, // Matches `_id` from backend
+    //         owner: s.provider, // Wallet address
+    //         name: backendStrategy?.strategy_name || "My Strategy", // Default name
+    //         subscriptionFee: Number(s.subscriptionFee), // Convert `BigNumber` to `number`
+    //         subscriberCount: Number(subscriberCount),
+    //         totalSubscriberCount: Number(totalSubscriberCount),
+    //         subscriptionPeriod: s.subscriptionPeriod,
+    //         profitability: Number(s.profitability),
+    //         risk: Number(s.risk),
+    //         ROI: Number(s.roi),
+      
+    //         // 🔹 Step 4: Dynamically calculate `status`
+    //         status:
+    //           s.profitability > 30
+    //             ? "High Profit"
+    //             : s.risk > 7
+    //             ? "High Risk"
+    //             : s.subscriberCount > 1000
+    //             ? "Most Popular"
+    //             : "Stable",
+    //       };
+    //     })
+    //   );
+    // } catch (error) {
+    //   console.error("❌ Error fetching strategies:", error);
+    //   return [];
+    // }
   };
-
+  
   const getMyStrategies = async () => {
     if (!contract) {
       console.error("❌ No contract found!");
