@@ -1,8 +1,9 @@
 "use client";
 import Link from "next/link";
 import { useTradingAlgo } from "../hooks/useTradingAlgo";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { enqueueSnackbar } from "notistack";
+import { useAccount } from "wagmi";
 
 const strategies = [
   {
@@ -44,44 +45,73 @@ const strategies = [
 ];
 
 export default function StrategiesPage() {
+  const { address, isConnected } = useAccount();
   const { subscribeToStrategy, unsubscribeFromStrategy, getEthPrice, getUserSubscriptions } = useTradingAlgo();
   const [loading, setLoading] = useState<{ [key: number]: boolean }>({});
+  const [subscribedStrategies, setSubscribedStrategies] = useState<number[]>([]);
+
+  // Fetch user's subscribed strategies
+  useEffect(() => {
+    if (isConnected && address) {
+      getUserSubscriptions(address).then((subscriptions) => {
+        setSubscribedStrategies(subscriptions.map(Number)); // Convert BigInt to number
+      });
+    }
+  }, [isConnected, address]);
 
   // Function to subscribe to a strategy
   const handleSubscribe = async (strategyId: number, fee: number) => {
-
     if (!window.ethereum) {
       alert("Please connect wallet to continue.");
       return;
     }
 
     try {
-      setLoading((prev) => ({ ...prev, [strategyId]: true })); // Set only this button to loading
+      setLoading((prev) => ({ ...prev, [strategyId]: true }));
 
-      // convert fee from usd to eth
+      // Convert fee from USD to ETH
       const ethPrice = await getEthPrice();
-      let ethValue = 0;
-      if (ethPrice) {
-        ethValue = parseFloat((fee / ethPrice).toFixed(8));
-        console.log(`Subscription fee in ETH: ${ethValue}`);
-      } else {
-        console.error("Failed to fetch ETH price");
+      if (!ethPrice) {
         enqueueSnackbar("Failed to fetch ETH price. Try again later.");
         return;
       }
 
-      subscribeToStrategy(strategyId, ethValue).then((tx) => {
-        console.log(`Subscription successful! Tx hash: ${tx.hash}`);
-        enqueueSnackbar(`Subscription successful!`);
-      }, (error) => {
-        enqueueSnackbar("Subscription failed. Check the console for details.");
-      });
+      const ethValue = parseFloat((fee / ethPrice).toFixed(8));
+      console.log(`Subscription fee in ETH: ${ethValue}`);
 
+      await subscribeToStrategy(strategyId, ethValue);
+      enqueueSnackbar("Subscription successful!");
+
+      // Update the subscribed strategies list
+      setSubscribedStrategies((prev) => [...prev, strategyId]);
     } catch (error) {
       console.error("Subscription failed:", error);
       enqueueSnackbar("Subscription failed. Check the console for details.");
     } finally {
-      setLoading((prev) => ({ ...prev, [strategyId]: false })); // Reset only this button's loading state
+      setLoading((prev) => ({ ...prev, [strategyId]: false }));
+    }
+  };
+
+  // Function to unsubscribe from a strategy
+  const handleUnsubscribe = async (strategyId: number) => {
+    if (!window.ethereum) {
+      alert("Please connect wallet to continue.");
+      return;
+    }
+
+    try {
+      setLoading((prev) => ({ ...prev, [strategyId]: true }));
+
+      await unsubscribeFromStrategy(strategyId);
+      enqueueSnackbar("Unsubscription successful!");
+
+      // Update the subscribed strategies list
+      setSubscribedStrategies((prev) => prev.filter((id) => id !== strategyId));
+    } catch (error) {
+      console.error("Unsubscription failed:", error);
+      enqueueSnackbar("Unsubscription failed. Check the console for details.");
+    } finally {
+      setLoading((prev) => ({ ...prev, [strategyId]: false }));
     }
   };
 
@@ -186,11 +216,22 @@ export default function StrategiesPage() {
                     </p>
                   </div>
                   <button
-                    onClick={() => handleSubscribe(strategy.id, strategy.fee)}
-                    className="bg-black text-white px-6 py-2 rounded-lg hover:bg-gray-800"
+                    onClick={() =>
+                      subscribedStrategies.includes(strategy.id)
+                        ? handleUnsubscribe(strategy.id)
+                        : handleSubscribe(strategy.id, strategy.fee)
+                    }
+                    className={`px-6 py-2 rounded-lg ${subscribedStrategies.includes(strategy.id)
+                      ? "bg-red-600 text-white hover:bg-red-800"
+                      : "bg-black text-white hover:bg-gray-800"
+                      }`}
                     disabled={loading[strategy.id]}
                   >
-                    {loading[strategy.id] ? "Processing..." : "Subscribe"}
+                    {loading[strategy.id]
+                      ? "Processing..."
+                      : subscribedStrategies.includes(strategy.id)
+                        ? "Unsubscribe"
+                        : "Subscribe"}
                   </button>
                 </div>
               </div>
